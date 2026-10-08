@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test - Internet</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    margin: 0;
+    padding: 20px;
+    color: #222;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    padding: 25px 30px 35px;
+  }
+  h1 {
+    text-align: center;
+    color: #1e3c72;
+    margin-top: 0;
+    font-size: 1.6em;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #eef3fb;
+    border-radius: 10px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border: 1px solid #d4e0f5;
+  }
+  .timer { color: #1e3c72; }
+  .timer.warning { color: #c0392b; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  .progress { color: #555; }
+  .question {
+    border-left: 5px solid #2a5298;
+    background: #f9fbff;
+    padding: 15px 18px;
+    margin-bottom: 22px;
+    border-radius: 8px;
+  }
+  .question h3 {
+    margin: 0 0 12px;
+    font-size: 1.05em;
+    color: #1e3c72;
+  }
+  .option {
+    display: block;
+    padding: 10px 14px;
+    margin: 7px 0;
+    border: 2px solid #d4e0f5;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: #fff;
+    position: relative;
+  }
+  .option:hover { background: #eef3fb; border-color: #2a5298; }
+  .option input { margin-right: 10px; }
+  .option.selected { background: #dce8fb; border-color: #2a5298; }
+
+  /* Stilovi za rezultat - unutar pitanja */
+  .option.correct {
+    background: #eafaf1;
+    border-color: #27ae60;
+    color: #1e7a45;
+    font-weight: bold;
+  }
+  .option.correct::after {
+    content: " ✓";
+    color: #27ae60;
+    font-weight: bold;
+  }
+  .option.wrong {
+    background: #fdecea;
+    border-color: #c0392b;
+    color: #a5281b;
+  }
+  .option.wrong::after {
+    content: " ✗";
+    color: #c0392b;
+    font-weight: bold;
+  }
+  .option.disabled {
+    cursor: default;
+  }
+  .option.disabled:hover {
+    background: inherit;
+    border-color: inherit;
+  }
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #fff;
+    background: #2a5298;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+  }
+  button:hover { background: #1e3c72; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  .results {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+    background: #eef3fb;
+    margin-bottom: 25px;
+  }
+  .results h2 { margin: 0 0 10px; color: #1e3c72; }
+  .score { font-size: 2.2em; font-weight: bold; }
+  .score.good { color: #27ae60; }
+  .score.bad { color: #c0392b; }
+  .percent { font-size: 1.3em; color: #555; margin-top: 5px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Test znanja: Internet</h1>
+
+  <div class="topbar">
+    <span class="timer" id="timer">⏱ 09:00</span>
+    <span class="progress" id="progress">Pitanje 1 / 15</span>
+  </div>
+
+  <div id="results" class="results"></div>
+  <form id="quizForm"></form>
+</div>
+
+<script>
+/* ---------- BANKA PITANJA ---------- */
+const banka = [
+  { q: "Šta je internet?",
+    tacan: "Ogromna svetska mreža koja povezuje milione računara i uređaja širom planete.",
+    netacni: ["Program za obradu teksta na računaru.", "Vrsta operativnog sistema.", "Softver za pravljenje tabela."] },
+
+  { q: "Šta je klijent?",
+    tacan: "Računarski program ili uređaj koji traži uslugu ili podatak od drugog računara.",
+    netacni: ["Moćan računar koji stalno pruža usluge drugima.", "Vrsta mrežnog kabla.", "Protokol za prenos fajlova."] },
+
+  { q: "Šta je server?",
+    tacan: "Moćan računar koji stalno radi i pruža usluge, podatke ili veb stranice drugim računarima.",
+    netacni: ["Program koji traži podatke od drugog računara.", "Veb pregledač na telefonu.", "Vrsta internet adrese."] },
+
+  { q: "Kako funkcioniše komunikacija klijent – server?",
+    tacan: "Klijent pošalje zahtev, a server obradi zahtev i vrati odgovor.",
+    netacni: ["Server prvo šalje podatke, a klijent ih čuva.", "Klijent i server nikada ne komuniciraju direktno.", "Komunikacija ide isključivo preko pošte."] },
+
+  { q: "Šta je pretraživač i koja mu je uloga?",
+    tacan: "Specijalizovani servis koji pregleda stranice i prikazuje najbolje rezultate na osnovu unetih reči.",
+    netacni: ["Program koji štiti računar od virusa.", "Uređaj za povezivanje na mrežu.", "Protokol za slanje e-pošte."] },
+
+  { q: "Na koji način klijent šalje podatke serveru?",
+    tacan: "Slanjem HTTP zahteva koji koriste metode poput GET ili POST.",
+    netacni: ["Preko FTP protokola isključivo.", "Slanjem SMS poruka.", "Putem DNS upita."] },
+
+  { q: "Šta server šalje kao odgovor na zahtev klijenta?",
+    tacan: "Statusnu poruku i traženi sadržaj.",
+    netacni: ["Samo broj zahteva.", "Novi URL.", "Listu svih korisnika."] },
+
+  { q: "Koji se protokol koristi za komunikaciju klijent – server?",
+    tacan: "HTTP, odnosno HTTPS, uz oslonac na TCP/IP.",
+    netacni: ["Isključivo FTP.", "Samo SMTP.", "POP3 i IMAP."] },
+
+  { q: "Šta predstavlja URL adresa?",
+    tacan: "Jedinstvena veb adresa koja pokazuje gde se određeni sadržaj nalazi na internetu.",
+    netacni: ["Naziv e-mail sandučeta.", "Ime servera u lokalnoj mreži.", "Vrsta internet protokola."] },
+
+  { q: "Koji su delovi URL adrese?",
+    tacan: "Protokol, naziv domena i putanja do fajla.",
+    netacni: ["IP adresa i MAC adresa.", "Korisničko ime i lozinka.", "Naziv fajla i veličina fajla."] },
+
+  { q: "Zašto je bitno adresiranje na internetu?",
+    tacan: "Da bi svaki uređaj i podatak imali tačnu i jedinstvenu oznaku.",
+    netacni: ["Da bi sajtovi bili lepši.", "Da bi internet bio brži.", "Da bi se smanjila potrošnja struje."] },
+
+  { q: "Razlika između IPv4 i IPv6 adresa?",
+    tacan: "IPv4 su starije adrese od četiri broja, a IPv6 je noviji sistem sa dužim kombinacijama.",
+    netacni: ["IPv4 je noviji, a IPv6 stariji sistem.", "IPv4 koriste samo telefoni, IPv6 samo računari.", "IPv6 je samo za e-poštu."] },
+
+  { q: "Koja je uloga DNS servera?",
+    tacan: "Pretvara slovne nazive sajtova u brojevne IP adrese.",
+    netacni: ["Čuva sve slike sa interneta.", "Šalje e-mail poruke.", "Štiti sajtove od hakera."] },
+
+  { q: "Koja je uloga spajdera?",
+    tacan: "Automatizovani program koji obilazi veb stranice i prati linkove na njima.",
+    netacni: ["Program koji briše viruse sa računara.", "Server koji čuva baze podataka.", "Protokol za prenos fajlova."] },
+
+  { q: "Navedite tri najčešće korišćena servisa na internetu.",
+    tacan: "World Wide Web, elektronska pošta i cloud servisi.",
+    netacni: ["FTP, DNS i TCP.", "IPv4, IPv6 i URL.", "HTML, CSS i JavaScript."] },
+
+  { q: "Šta je FTP?",
+    tacan: "Protokol koji služi za prenos fajlova između računara i servera.",
+    netacni: ["Vrsta veb pregledača.", "Jezik za pisanje veb stranica.", "Servis za slanje e-pošte."] },
+
+  { q: "Šta je email servis?",
+    tacan: "Servis koji omogućava slanje i primanje elektronskih poruka putem interneta.",
+    netacni: ["Servis za gledanje video klipova.", "Servis za kupovinu online.", "Servis za pravljenje sajtova."] },
+
+  { q: "Šta je WWW servis i šta omogućava?",
+    tacan: "Sistem povezanih dokumenata koji omogućava čitanje tekstova i prelazak preko linkova.",
+    netacni: ["Protokol za prenos fajlova.", "Servis za slanje e-pošte.", "Vrsta internet pretraživača."] },
+
+  { q: "Objasnite pojam domen.",
+    tacan: "Jedinstveno ime veb sajta koje se sastoji od naziva i nastavka.",
+    netacni: ["Brojevna adresa računara u mreži.", "Vrsta servera u oblaku.", "Protokol za bezbednu komunikaciju."] },
+
+  { q: "Šta predstavlja pojam hostovanje na internetu?",
+    tacan: "Usluga iznajmljivanja prostora na serverima koji su stalno povezani na internet.",
+    netacni: ["Kupovina domena na godinu dana.", "Izrada veb stranice u HTML-u.", "Prevođenje adrese u IP."] },
+
+  { q: "Šta je web stranica?",
+    tacan: "Pojedinačni dokument na internetu napisan pomoću HTML koda.",
+    netacni: ["Skup svih sajtova na internetu.", "Program za pregledanje slika.", "Vrsta servera."] },
+
+  { q: "Koja je razlika između statičke i dinamičke web stranice?",
+    tacan: "Statička uvek prikazuje isti sadržaj, a dinamička se menja i prilagođava korisniku.",
+    netacni: ["Statička je brža od dinamičke.", "Dinamička ne može sadržati slike.", "Statička se pravi samo u PHP-u."] },
+
+  { q: "Nabrojati klijentske i serverske skript jezike.",
+    tacan: "Klijentski je JavaScript, a serverski su PHP, Python, Java, C# i Node.js.",
+    netacni: ["Klijentski su PHP i Python, a serverski HTML.", "Klijentski je HTML, a serverski CSS.", "Klijentski i serverski su isti jezici."] },
+
+  { q: "Razlika između web i desktop aplikacije?",
+    tacan: "Desktop se instalira na računar, a veb aplikaciji pristupa se preko pregledača.",
+    netacni: ["Veb aplikacija mora se instalirati.", "Desktop aplikacija radi samo online.", "Obe aplikacije rade bez interneta."] },
+
+  { q: "Šta su statusni kodovi i čemu služe?",
+    tacan: "Trocifreni brojevi koji govore kako je prošao zahtev.",
+    netacni: ["Brojevi koji označavaju IP adresu.", "Šifre za prijavu na sajt.", "Oznake za veličinu fajla."] },
+
+  { q: "Čemu služi forum, blog, društvena mreža?",
+    tacan: "Forum za diskusije, blog za autorske tekstove, društvena mreža za povezivanje i deljenje sadržaja.",
+    netacni: ["Svi služe za kupovinu proizvoda.", "Svi služe za slanje e-pošte.", "Svi služe za čuvanje fajlova."] },
+
+  { q: "Pojam slobodne enciklopedije na netu (navedi primer).",
+    tacan: "Onlajn zbirka znanja koju svi mogu čitati i uređivati; primer je Wikipedia.",
+    netacni: ["Servis za prevod tekstova; primer je Google Translate.", "Servis za gledanje filmova; primer je YouTube.", "Servis za kupovinu; primer je Amazon."] },
+
+  { q: "Čemu služi geografski informacioni sistem i internet mape (navedi primer)?",
+    tacan: "Služe za pretragu lokacija i planiranje ruta; primer je Google Maps.",
+    netacni: ["Služe za slanje e-pošte; primer je Gmail.", "Služe za pravljenje sajtova; primer je WordPress.", "Služe za čuvanje fajlova; primer je Dropbox."] },
+
+  { q: "Sve što znate o elektronskoj trgovini i bankarstvu na internetu.",
+    tacan: "Omogućavaju kupovinu i plaćanje računa preko interneta uz jaku zaštitu i šifrovanje.",
+    netacni: ["Omogućavaju samo razmenu poruka.", "Rade bez ikakve zaštite podataka.", "Koriste se samo za igrice."] },
+
+  { q: "Sve što znate o elektronskom učenju.",
+    tacan: "Sticanje znanja pomoću računara i interneta uz lekcije, testove i komunikaciju.",
+    netacni: ["Učenje isključivo iz štampanih knjiga.", "Učenje koje ne zahteva računar.", "Učenje samo u učionici."] },
+
+  { q: "Kako funkcioniše slanje email pošte na internetu?",
+    tacan: "Preko SMTP servera za slanje i IMAP ili POP3 protokola za prijem.",
+    netacni: ["Preko FTP protokola.", "Preko HTTP zahteva GET.", "Preko DNS servera."] },
+
+  { q: "Ko omogućava skladištenje datoteka u oblaku?",
+    tacan: "Velike kompanije sa centrima podataka; primeri su Google Drive, OneDrive i Dropbox.",
+    netacni: ["Samo državne institucije.", "Mali lokalni provajderi.", "Korisnici sami na svojim telefonima."] },
+
+  { q: "Šta je ćaskanje?",
+    tacan: "Brza tekstualna komunikacija u realnom vremenu između korisnika.",
+    netacni: ["Slanje e-pošte sa zakašnjenjem.", "Prenos velikih fajlova.", "Gledanje video zapisa."] },
+
+  { q: "Šta je VoIP?",
+    tacan: "Tehnologija za telefonske i video pozive preko internet mreže.",
+    netacni: ["Protokol za prenos fajlova.", "Vrsta veb pregledača.", "Servis za slanje e-pošte."] }
+];
+
+/* ---------- PODEŠAVANJA ---------- */
+const BROJ_PITANJA = 15;
+const VREME_MIN = 9;
+
+/* ---------- POMOĆNE FUNKCIJE ---------- */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Neutralni nastavci za produžavanje NETAČNIH opcija */
+const nastavci = [
+  " Ovaj opis se često sreće u osnovama informatike.",
+  " Navedeno se obrađuje u okviru gradiva o računarskim mrežama.",
+  " Pojam pripada oblasti internet tehnologija i veb servisa.",
+  " Odgovor treba pažljivo uporediti sa ostalim ponuđenim opcijama.",
+  " Tvrdnja je deo opšteg znanja o funkcionisanju interneta.",
+  " Ovo je jedno od mogućih tumačenja u ovoj oblasti.",
+  " Definicija se odnosi na pojmove iz udžbenika informatike.",
+  " Navedeno predstavlja čest pojam u svetu računarskih mreža.",
+  " Objašnjenje je vezano za osnovne pojmove o internetu.",
+  " Radi se o opisu koji se uči u okviru ove nastavne jedinice.",
+  " Pojam se često pominje u kontekstu savremenih tehnologija.",
+  " Opis je deo gradiva koje se obrađuje u školi.",
+  " Navedeno se odnosi na oblast računarstva i interneta.",
+  " Odgovor je vezan za pojmove koji se uče o mrežama.",
+  " Tvrdnja pripada osnovnim pojmovima iz informatike.",
+  " Ovakvo objašnjenje se može naći u literaturi o internetu.",
+  " Pojam je deo šire oblasti informacionih tehnologija.",
+  " Definicija je povezana sa načinom rada računarskih sistema.",
+  " Navedeno se proučava u okviru predmeta informatika.",
+  " Odgovor se odnosi na opšte poznate činjenice o mrežama."
+];
+
+/* Produžava ISKLJUČIVO NETAČNE opcije.
+   Tačan odgovor se NIKADA ne dira - ostaje u punom originalnom obliku. */
+function izjednaciDuzine(opcije) {
+  const tacan = opcije.find(o => o.tacan);
+  const netacni = opcije.filter(o => !o.tacan);
+  const duzinaTacnog = tacan.tekst.length;
+
+  const strategije = shuffle([0, 1, 2]);
+
+  netacni.forEach((o, idx) => {
+    const strategija = strategije[idx % strategije.length];
+    let ciljnaDuzina;
+
+    if (strategija === 0) {
+      ciljnaDuzina = Math.floor(duzinaTacnog * (0.60 + Math.random() * 0.20));
+    } else if (strategija === 1) {
+      ciljnaDuzina = Math.floor(duzinaTacnog * (0.95 + Math.random() * 0.10));
+    } else {
+      ciljnaDuzina = Math.floor(duzinaTacnog * (1.20 + Math.random() * 0.40));
+    }
+
+    if (o.tekst.length >= ciljnaDuzina) return;
+
+    let zastita = 0;
+    while (o.tekst.length < ciljnaDuzina - 10 && zastita < 20) {
+      o.tekst += nastavci[Math.floor(Math.random() * nastavci.length)];
+      zastita++;
+    }
+  });
+
+  return opcije;
+}
+
+/* ---------- PRIPREMA TESTA ---------- */
+const izabranaPitanja = shuffle(banka).slice(0, BROJ_PITANJA);
+
+izabranaPitanja.forEach(p => {
+  let opcije = [
+    { tekst: p.tacan, tacan: true },
+    ...p.netacni.map(t => ({ tekst: t, tacan: false }))
+  ];
+
+  opcije = izjednaciDuzine(opcije);
+  opcije = shuffle(opcije);
+
+  p.opcije = opcije;
+  p.tacanIndeks = opcije.findIndex(o => o.tacan);
+});
+
+/* ---------- RENDER ---------- */
+const form = document.getElementById('quizForm');
+const resultsDiv = document.getElementById('results');
+const timerEl = document.getElementById('timer');
+const progressEl = document.getElementById('progress');
+
+let predato = false;
+
+function render() {
+  form.innerHTML = '';
+  izabranaPitanja.forEach((p, i) => {
+    const qDiv = document.createElement('div');
+    qDiv.className = 'question';
+    qDiv.dataset.qIndex = i;
+    qDiv.innerHTML = `<h3>${i + 1}. ${p.q}</h3>`;
+
+    p.opcije.forEach((o, j) => {
+      const label = document.createElement('label');
+      label.className = 'option';
+      label.dataset.optIndex = j;
+      const slovo = String.fromCharCode(97 + j);
+      label.innerHTML = `<input type="radio" name="q${i}" value="${j}"> <strong>${slovo})</strong> ${o.tekst}`;
+      label.querySelector('input').addEventListener('change', () => {
+        qDiv.querySelectorAll('.option').forEach(el => el.classList.remove('selected'));
+        label.classList.add('selected');
+        updateProgress();
+      });
+      qDiv.appendChild(label);
+    });
+
+    form.appendChild(qDiv);
+  });
+
+  const btn = document.createElement('button');
+  btn.type = 'submit';
+  btn.textContent = 'Završi test';
+  form.appendChild(btn);
+}
+
+function updateProgress() {
+  let odgovoreno = 0;
+  for (let i = 0; i < izabranaPitanja.length; i++) {
+    if (form.querySelector(`input[name="q${i}"]:checked`)) odgovoreno++;
+  }
+  progressEl.textContent = `Odgovoreno: ${odgovoreno} / ${BROJ_PITANJA}`;
+}
+
+/* ---------- TAJMER ---------- */
+let preostaloSekundi = VREME_MIN * 60;
+let timerId = null;
+
+function startTimer() {
+  timerId = setInterval(() => {
+    preostaloSekundi--;
+    const m = Math.floor(preostaloSekundi / 60);
+    const s = preostaloSekundi % 60;
+    timerEl.textContent = `⏱ ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    if (preostaloSekundi <= 60) timerEl.classList.add('warning');
+    if (preostaloSekundi <= 0) {
+      clearInterval(timerId);
+      predaj(true);
+    }
+  }, 1000);
+}
+
+/* ---------- PREDAJA ---------- */
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  predaj(false);
+});
+
+function predaj(vremeIsteklo) {
+  if (predato) return;
+  predato = true;
+  clearInterval(timerId);
+
+  form.querySelectorAll('input').forEach(inp => inp.disabled = true);
+  const btn = form.querySelector('button');
+  if (btn) btn.disabled = true;
+
+  let tacni = 0;
+
+  // Prođi kroz sva pitanja i označi tačan i pogrešan odgovor UNUTAR pitanja
+  izabranaPitanja.forEach((p, i) => {
+    const qDiv = form.querySelector(`.question[data-q-index="${i}"]`);
+    const izabrano = form.querySelector(`input[name="q${i}"]:checked`);
+    const izabraniIndeks = izabrano ? parseInt(izabrano.value) : -1;
+
+    // označi sve opcije kao disabled (vizuelno)
+    qDiv.querySelectorAll('.option').forEach(el => el.classList.add('disabled'));
+
+    // tačan odgovor uvek zelen
+    const tacanEl = qDiv.querySelector(`.option[data-opt-index="${p.tacanIndeks}"]`);
+    if (tacanEl) tacanEl.classList.add('correct');
+
+    // ako je korisnik pogrešio, njegov izbor crven
+    if (izabraniIndeks >= 0 && izabraniIndeks !== p.tacanIndeks) {
+      const pogresanEl = qDiv.querySelector(`.option[data-opt-index="${izabraniIndeks}"]`);
+      if (pogresanEl) pogresanEl.classList.add('wrong');
+    }
+
+    if (izabraniIndeks === p.tacanIndeks) tacni++;
+  });
+
+  const procenat = Math.round((tacni / BROJ_PITANJA) * 100);
+
+  resultsDiv.style.display = 'block';
+  resultsDiv.innerHTML = `
+    <h2>${vremeIsteklo ? 'Vreme je isteklo!' : 'Test je završen!'}</h2>
+    <div class="score ${procenat >= 50 ? 'good' : 'bad'}">${tacni} / ${BROJ_PITANJA}</div>
+    <div class="percent">Uspešnost: ${procenat}%</div>
+  `;
+
+  resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ---------- START ---------- */
+render();
+startTimer();
+updateProgress();
+</script>
+</body>
+</html>
